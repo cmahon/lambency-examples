@@ -1,0 +1,41 @@
+name:                lambency-examples
+version:             0.0.0.1
+synopsis:            Games
+license:             MIT
+author:              Chris Mahon
+maintainer:          cnmahon@gmail.com
+category:            Game
+build-type:          Simple
+cabal-version:       >=1.10
+data-files:          kenpixel.ttf
+data-dir:            assets
+
+executable test
+  hs-source-dirs:   src
+  main-is:          Test.hs
+  ghc-options:      -Wall -rtsopts
+  build-depends:    base > 4.6,
+                    GLFW-b,
+                    lambency,
+                    linear,
+                    mtl >= 2.1.2,
+                    netwire >= 5.0.0
+  default-language: Haskell2010
+
+executable asteroids
+  hs-source-dirs:   src
+  main-is:          Asteroids.hs
+  ghc-options:      -Wall -rtsopts
+  build-depends:    base > 4.6,
+                    containers,
+                    deepseq >= 1.3,
+                    netwire >= 5,
+                    netwire-input,
+                    GLFW-b,
+                    lambency,
+                    lens,
+                    linear, 
+                    mtl,
+                    directory,
+                    filepath
+  default-language: Haskell2010
