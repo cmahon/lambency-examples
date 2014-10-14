@@ -1,7 +1,7 @@
 Lambency examples
 =================
 
-Experimenting with the Lambency library. Currently using a patched version of the library that exposes Lambency.Vertex and Lambency.Mesh.Mesh(..). 
+Experimenting with the [Lambency](https://github.com/Mokosha/Lambency) library. Currently using a patched version that exposes Lambency.Vertex and Lambency.Mesh.Mesh(..). 
 
 Asteroids controls:
 
