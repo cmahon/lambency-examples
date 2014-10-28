@@ -1,9 +1,13 @@
 {-# LANGUAGE Arrows #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 
 module Main where
 
 --------------------------------------------------------------------------------
 
+import           Control.Lens
+import           Control.Monad     (liftM)
 import           Control.Wire      hiding ((.))
 import           Data.Fixed
 import           Data.Foldable     (forM_)
@@ -54,6 +58,11 @@ mkAsteroid p d v r = Asteroid $ Object p d v r
 type Asteroids = IntMap Asteroid
 
 type Collisions = Set Int 
+
+makeLenses ''Object
+makeLenses ''Ship
+makeLenses ''Bullet
+makeLenses ''Asteroid
 
 -----------------------------------------------------------------------------
 
@@ -159,14 +168,30 @@ quad = L.Mesh
 
 -----------------------------------------------------------------------------
 
+-- controlShipW :: L.GameWire Ship Ship
+-- controlShipW = mkGen $ \ds (Ship (Object p d v rot)) -> do
+--   t <- keyIsPressed GLFW.Key'Up 
+--   l <- bool 1 0 <$> keyIsPressed GLFW.Key'Left
+--   r <- bool (-1) 0 <$> keyIsPressed GLFW.Key'Right 
+--   let d' = d + (dtime ds) * (l+r) * shipRotationSpeed
+--       v' = bool (shipMaxSpeed *^ angle (d' + pi/2)) v t
+--   return (Right (mkShip p d' v' rot), controlShipW)
+
 controlShipW :: L.GameWire Ship Ship
-controlShipW = mkGen $ \ds ~(Ship (Object p d v rot)) -> do
+controlShipW = mkGen $ \ds ship -> do
   t <- keyIsPressed GLFW.Key'Up 
-  l <- bool 1 0 <$> keyIsPressed GLFW.Key'Left
-  r <- bool (-1) 0 <$> keyIsPressed GLFW.Key'Right 
-  let d' = d + (dtime ds) * (l+r) * shipRotationSpeed
-      v' = bool (shipMaxSpeed *^ angle (d' + pi/2)) v t
-  return (Right (mkShip p d' v' rot), controlShipW)
+  l <- keyIsPressed GLFW.Key'Left
+  r <- keyIsPressed GLFW.Key'Right 
+  let
+    d   = ship ^. (shipObj . objDir)
+    v   = ship ^. (shipObj . objVel)
+    rot = bool 1 0 l + bool (-1) 0 r
+    d'  = d + (dtime ds) * rot * shipRotationSpeed
+    v'  = bool (shipMaxSpeed *^ angle (d' + pi/2)) v t
+    ship' = ship 
+      & (shipObj . objDir) .~ d'
+      & (shipObj . objVel) .~ v'
+  return (Right ship', controlShipW)
 
 moveShipW :: L.GameWire Ship Ship
 moveShipW = mkSF $ \ds (Ship (Object p d v r)) ->
@@ -243,7 +268,7 @@ bulletsW ro = loop $
 -----------------------------------------------------------------------------
 
 collideAsteroids :: L.GameWire (Collisions,Asteroids) Asteroids
-collideAsteroids = mkSF_ $ \ ~(cs,as) -> S.foldl (flip I.delete) as cs
+collideAsteroids = mkSF_ $ \ (cs,as) -> S.foldl (flip I.delete) as cs
 
 moveAsteroid :: Float -> Asteroid -> Asteroid
 moveAsteroid dt (Asteroid (Object p d v r)) =
@@ -289,7 +314,7 @@ collisionsW = mkSF_ $ \(bs,as) ->
 
 collides :: Object -> Object -> Bool
 collides (Object (V2 x1 y1) _ _ _) (Object (V2 x2 y2) _ _ _) =
-  abs (x1 - x2) < 5 && abs (y1 - y2) < 5
+  abs (x1 - x2) < 10 && abs (y1 - y2) < asteroidSize
 
 -----------------------------------------------------------------------------
 
@@ -318,6 +343,12 @@ gameWire font sro bro aro = proc score -> do
       score' <- scoreW font -< (score,astColls) 
   returnA -< score' 
 
+gameLogic :: L.Font -> L.RenderObject -> L.RenderObject -> L.RenderObject -> L.GameWire Int Int
+gameLogic font sro bro aro = 
+  when (< I.size startAsteroids)
+  >>> gameWire font sro bro aro
+  >>> L.quitWire GLFW.Key'Q
+
 -----------------------------------------------------------------------------
 
 gameCam :: L.GameWire () L.Camera
@@ -339,7 +370,7 @@ loadGame = do
     , L.staticGeometry = []
     , L.mainCamera = gameCam
     , L.dynamicLights = []
-    , L.gameLogic = gameWire font ship bullet asteroid >>> L.quitWire GLFW.Key'Q
+    , L.gameLogic = gameLogic font ship bullet asteroid
     }
 
 -----------------------------------------------------------------------------

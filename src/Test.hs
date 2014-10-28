@@ -51,6 +51,16 @@ mkMaterial = do
   t <- L.createSolidTexture (127, 0, 255, 255) 
   return $ L.createTexturedMaterial t
 
+mkLine :: IO (L.Transform, L.RenderObject)
+mkLine = do
+  m <- L.createSimpleMaterial
+  ro <- L.createRenderObject L.quad m
+  return (xform, ro)
+  where
+  xform = L.translate (V3 400 200 (-5)) $
+          L.nonuniformScale (V3 200 1 1) $
+          L.identity
+
 mkTriangle :: IO (L.Transform, L.RenderObject)
 mkTriangle = do
   m <- L.createSimpleMaterial
@@ -79,11 +89,12 @@ camera = pure zero >>> (L.mk2DCam screenSizeX screenSizeY)
 initGame :: IO (L.Game ())
 initGame = do
   noLight <- L.createNoLight
+  line <- mkLine
   triangle <- mkTriangle
   polygon <- mkPolygon
   return $ L.Game
     { L.staticLights = [noLight]
-    , L.staticGeometry = [triangle,polygon]
+    , L.staticGeometry = [line,triangle,polygon]
     , L.mainCamera = camera
     , L.dynamicLights = []
     , L.gameLogic = L.quitWire GLFW.Key'Q
